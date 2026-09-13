@@ -15,7 +15,7 @@
     
     .report-only { display: none; }
 
-    /* University Grade Report Print & PDF Styling - Optimized Spacing */
+    /* University Grade Report Print & PDF Styling */
     @media print {
       .no-print { display: none !important; }
       .tab-content { display: none !important; }
@@ -26,21 +26,21 @@
         color: #111827 !important; 
         font-family: Georgia, Cambria, "Times New Roman", Times, serif !important;
         font-size: 11pt;
-        line-height: 1.5;
+        line-height: 1.6;
       }
       
       @page {
         size: A4;
-        margin: 18mm 15mm 18mm 15mm;
+        margin: 22mm 18mm 22mm 18mm;
         @top-right {
           content: "Kai Oranga Assessment Report | Te Mahi Maara";
-          font-size: 8pt;
+          font-size: 8.5pt;
           font-family: sans-serif;
           color: #4b5563;
         }
         @bottom-right {
           content: "Page " counter(page);
-          font-size: 8pt;
+          font-size: 8.5pt;
           font-family: sans-serif;
           color: #4b5563;
         }
@@ -51,28 +51,14 @@
         break-after: page;
       }
 
-      /* Clean borderless and gap-optimized report blocks for smooth flow */
-      .report-section-block {
-        margin-bottom: 16px !important;
-        padding-bottom: 12px !important;
-        border-bottom: 1px solid #e2e8f0 !important;
-        page-break-inside: avoid !important;
-      }
-
-      .report-photo-grid {
-        display: grid !important;
-        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-        gap: 10px !important;
-        margin-top: 8px !important;
-        margin-bottom: 8px !important;
-      }
-
       .report-photo {
         width: 100% !important;
-        height: 200px !important;
+        max-height: 280px !important;
         object-fit: cover !important;
-        border-radius: 4px !important;
+        border-radius: 6px !important;
         border: 1px solid #cbd5e1 !important;
+        margin-top: 6px;
+        margin-bottom: 6px;
         page-break-inside: avoid !important;
       }
     }
@@ -619,7 +605,7 @@
       recognition.start();
     }
 
-    const STORAGE_KEY = 'kai_oranga_journal_draft_v20';
+    const STORAGE_KEY = 'kai_oranga_journal_draft_v21';
     let autoSaveTimer = null;
 
     function triggerAutoSave() {
@@ -686,6 +672,12 @@
           id,
           title: document.getElementById(`title-${id}`)?.value || '',
           notes: document.getElementById(`notes-${id}`)?.value || '',
+          useKarakia: document.getElementById(`useKarakia-${id}`)?.checked || false,
+          kTitle: document.getElementById(`kTitle-${id}`)?.value || '',
+          kActual: document.getElementById(`kActual-${id}`)?.value || '',
+          kLit: document.getElementById(`kLit-${id}`)?.value || '',
+          kMet: document.getElementById(`kMet-${id}`)?.value || '',
+          kInt: document.getElementById(`kInt-${id}`)?.value || '',
           photos: subStageData[stage][id].photos
         });
       }
@@ -845,6 +837,33 @@
             </label>
           </div>
         </div>
+
+        <!-- Optional stage karakia/whakatauki toggle -->
+        <div class="pt-2 border-t border-stone-200">
+          <label class="flex items-center gap-2 text-xs font-semibold text-emerald-900 cursor-pointer">
+            <input type="checkbox" id="useKarakia-${id}" onchange="toggleTaskKarakia('${id}')" class="rounded text-emerald-700 focus:ring-emerald-700 w-4 h-4" />
+            <span>Include specific Karakia and Whakataukī for this task card</span>
+          </label>
+          <div id="karakiaBox-${id}" class="hidden mt-2 p-3.5 bg-white rounded-xl border border-stone-200 space-y-3">
+            <div>
+              <label class="block text-[11px] font-bold uppercase text-stone-600 mb-1">Select Karakia Preset</label>
+              <select id="kPreset-${id}" class="w-full text-xs p-1.5 border rounded-lg bg-stone-50 mb-2" onchange="applyTaskKarakiaPreset('${id}', this.value)">
+                <option value="">-- Choose from 10 Karakia Presets --</option>
+              </select>
+              <input type="text" id="kTitle-${id}" placeholder="Karakia Title" class="w-full text-xs p-2 border rounded-lg font-semibold mb-2" oninput="triggerAutoSave()" />
+              <textarea rows="2" id="kActual-${id}" placeholder="Te Reo Māori text..." class="w-full text-xs p-2 border rounded-lg font-serif italic" oninput="triggerAutoSave()"></textarea>
+            </div>
+            
+            <div class="pt-2 border-t border-stone-100">
+              <label class="block text-[11px] font-bold uppercase text-stone-600 mb-1">Select Whakataukī Preset</label>
+              <select id="wPreset-${id}" class="w-full text-xs p-1.5 border rounded-lg bg-stone-50 mb-2" onchange="applyTaskWhakataukiPreset('${id}', this.value)">
+                <option value="">-- Choose from 10 Whakataukī Presets --</option>
+              </select>
+              <input type="text" id="wText-${id}" placeholder="Whakataukī phrase" class="w-full text-xs p-2 border rounded-lg font-semibold" oninput="triggerAutoSave()" />
+            </div>
+          </div>
+        </div>
+
         <div>
           <div class="flex items-center justify-between mb-1">
             <label class="block text-[11px] font-bold uppercase tracking-wider text-stone-600">Observations & Step Reflection</label>
@@ -853,8 +872,62 @@
           <textarea rows="3" id="notes-${id}" oninput="autoExpand(this); triggerAutoSave();" placeholder="Describe observations..." class="w-full p-3 border rounded-lg text-xs bg-white outline-none font-serif leading-relaxed"></textarea>
         </div>
       `;
+
+      // Populate dropdowns
+      const selK = groupDiv.querySelector(`#kPreset-${id}`);
+      if (selK) {
+        KARAKIA_PRESETS.forEach(item => {
+          const opt = document.createElement('option');
+          opt.value = item.id;
+          opt.textContent = `${item.title} (${item.scenario})`;
+          selK.appendChild(opt);
+        });
+      }
+
+      const selW = groupDiv.querySelector(`#wPreset-${id}`);
+      if (selW) {
+        WHATAUKI_PRESETS.forEach(item => {
+          const opt = document.createElement('option');
+          opt.value = item.id;
+          opt.textContent = `${item.text} — ${item.scenario}`;
+          selW.appendChild(opt);
+        });
+      }
+
       container.appendChild(groupDiv);
       triggerAutoSave();
+    }
+
+    function toggleTaskKarakia(id) {
+      const box = document.getElementById(`karakiaBox-${id}`);
+      const chk = document.getElementById(`useKarakia-${id}`);
+      if (chk && box) {
+        if (chk.checked) {
+          box.classList.remove('hidden');
+        } else {
+          box.classList.add('hidden');
+        }
+      }
+      triggerAutoSave();
+    }
+
+    function applyTaskKarakiaPreset(id, presetId) {
+      if (!presetId) return;
+      const item = KARAKIA_PRESETS.find(k => k.id === presetId);
+      if (item) {
+        document.getElementById(`kTitle-${id}`).value = item.title;
+        document.getElementById(`kActual-${id}`).value = item.actual;
+        triggerAutoSave();
+      }
+    }
+
+    function applyTaskWhakataukiPreset(id, presetId) {
+      if (!presetId) return;
+      const item = WHATAUKI_PRESETS.find(w => w.id === presetId);
+      if (item) {
+        document.getElementById(`wText-${id}`).value = item.text;
+        triggerAutoSave();
+      }
     }
 
     function removeSubStage(stage, id) {
@@ -993,12 +1066,33 @@
           const notes = document.getElementById(`notes-${id}`)?.value.trim() || '';
           const photos = groups[id].photos;
 
-          if (title || notes || photos.length > 0) {
+          const useK = document.getElementById(`useKarakia-${id}`)?.checked || false;
+          let kCardTitle = '', kCardActual = '', wCardText = '';
+          if (useK) {
+            kCardTitle = document.getElementById(`kTitle-${id}`)?.value.trim() || '';
+            kCardActual = document.getElementById(`kActual-${id}`)?.value.trim() || '';
+            wCardText = document.getElementById(`wText-${id}`)?.value.trim() || '';
+          }
+
+          if (title || notes || photos.length > 0 || useK) {
             hasContent = true;
             let groupSubDiv = document.createElement('div');
             groupSubDiv.className = "bg-stone-50/60 p-4 rounded-xl border border-stone-200 space-y-2";
+            
+            let culturalHTML = '';
+            if (useK && (kCardTitle || kCardActual || wCardText)) {
+              culturalHTML = `
+                <div class="p-3 bg-emerald-50/70 rounded-lg border border-emerald-200 space-y-1 mb-2 text-xs">
+                  ${kCardTitle ? `<p class="font-bold text-emerald-900">🌿 Karakia: ${kCardTitle}</p>` : ''}
+                  ${kCardActual ? `<p class="font-serif italic text-emerald-950">${kCardActual}</p>` : ''}
+                  ${wCardText ? `<p class="font-bold text-amber-900 mt-1">🗣️ Whakataukī: "${wCardText}"</p>` : ''}
+                </div>
+              `;
+            }
+
             groupSubDiv.innerHTML = `
               ${title ? `<h5 class="font-bold text-stone-900 text-xs uppercase tracking-wider">${title}</h5>` : ''}
+              ${culturalHTML}
               ${notes ? `<p class="text-sm font-serif leading-relaxed">${notes}</p>` : ''}
             `;
 
@@ -1054,7 +1148,7 @@
         WHATAUKI_PRESETS.forEach((item) => {
           const opt = document.createElement('option');
           opt.value = item.id;
-          opt.textContent = `${item.text} - ${item.scenario}`;
+          opt.textContent = `${item.text} — ${item.scenario}`;
           wSelect.appendChild(opt);
         });
       }
